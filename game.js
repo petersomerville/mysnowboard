@@ -18,6 +18,12 @@
     { id: 'helmet', name: 'Safety Helmet', emoji: '⛑️', cost: 35, desc: '-8 crash damage' }
   ];
 
+  const HILLS = [
+    { name: 'Bunny Hill', emoji: '🐰', successMod: 1.15, rewardMod: 0.7, damageMod: 0.6, desc: 'Gentle slopes — lower risk, lower reward.' },
+    { name: 'Black Diamond', emoji: '◆', successMod: 1.0, rewardMod: 1.0, damageMod: 1.0, desc: 'Balanced risk and reward.' },
+    { name: 'Double Black', emoji: '💀', successMod: 0.75, rewardMod: 2.0, damageMod: 1.5, desc: 'Extreme terrain — huge payoff, huge pain.' }
+  ];
+
   var LB_KEY = 'mysnowboard_leaderboard';
 
   const COLORS = [
@@ -35,8 +41,12 @@
     _p1Color: 0,
     _p2Color: 1,
     selectedJump: null,
+    selectedHill: 1,
     lastResult: null
   };
+
+  var soundEnabled = true;
+  var audioCtx;
 
   let animCanvas, animCtx, animStart, animSuccess, animJumpIdx;
 
@@ -44,14 +54,86 @@
   const $$ = (s) => document.querySelectorAll(s);
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  function applyGear(jump, gear) {
+  function applyMods(jump, gear, hill) {
     var rate = jump.successRate;
     var reward = jump.reward;
     var damage = jump.damage;
     if (gear.indexOf('boots') >= 0) rate = Math.min(0.95, rate + 0.08);
     if (gear.indexOf('board') >= 0) reward += 5;
     if (gear.indexOf('helmet') >= 0) damage = Math.max(5, damage - 8);
+    rate = Math.min(0.95, rate * hill.successMod);
+    reward = Math.round(reward * hill.rewardMod);
+    damage = Math.max(5, Math.round(damage * hill.damageMod));
     return { successRate: rate, reward: reward, damage: damage };
+  }
+
+  // ==================== SOUND ====================
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playTone(freq, dur, type, vol) {
+    if (!soundEnabled) return;
+    try {
+      var ctx = getAudioCtx();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol || 0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function sfxSuccess() {
+    playTone(523, 0.15, 'sine', 0.2);
+    setTimeout(function () { playTone(659, 0.15, 'sine', 0.2); }, 100);
+    setTimeout(function () { playTone(784, 0.2, 'sine', 0.2); }, 200);
+  }
+
+  function sfxWipeout() {
+    playTone(200, 0.3, 'sawtooth', 0.12);
+    setTimeout(function () { playTone(120, 0.5, 'sawtooth', 0.1); }, 150);
+  }
+
+  function sfxStreak() {
+    playTone(523, 0.1, 'sine', 0.2);
+    setTimeout(function () { playTone(659, 0.1, 'sine', 0.2); }, 70);
+    setTimeout(function () { playTone(784, 0.1, 'sine', 0.2); }, 140);
+    setTimeout(function () { playTone(1047, 0.25, 'sine', 0.25); }, 210);
+  }
+
+  function sfxBuy() {
+    playTone(880, 0.1, 'sine', 0.15);
+    setTimeout(function () { playTone(1100, 0.15, 'sine', 0.15); }, 80);
+  }
+
+  function sfxClick() {
+    playTone(600, 0.04, 'square', 0.05);
+  }
+
+  function sfxLaunch() {
+    if (!soundEnabled) return;
+    try {
+      var ctx = getAudioCtx();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (e) {}
   }
 
   function loadLeaderboard() {
@@ -224,7 +306,7 @@
   }
 
   function newPlayer(name, colorIdx) {
-    return { name: name, colorIndex: colorIdx, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0, alive: true, gear: [] };
+    return { name: name, colorIndex: colorIdx, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0, alive: true, gear: [], streak: 0 };
   }
 
   function startGame() {
@@ -251,6 +333,7 @@
 
   function initHill() {
     state.selectedJump = null;
+    state.selectedHill = 1;
     updateHUD();
 
     var turnEl = $('#turn-indicator');
@@ -272,30 +355,69 @@
       gearEl.classList.add('hidden');
     }
 
-    const box = $('#jump-options');
-    box.innerHTML = '';
-    JUMPS.forEach((j, i) => {
-      var mods = applyGear(j, state.player.gear);
-      var boosted = mods.successRate !== j.successRate || mods.reward !== j.reward || mods.damage !== j.damage;
-      const card = document.createElement('div');
-      card.className = 'jump-card';
-      card.innerHTML =
-        '<div class="jump-emoji">' + j.emoji + '</div>' +
-        '<h3>' + j.name + '</h3>' +
-        '<div class="jump-stats">' +
-          '<span class="stat' + (mods.successRate !== j.successRate ? ' stat-boosted' : '') + '">🎯 ' + Math.round(mods.successRate * 100) + '%</span>' +
-          '<span class="stat' + (mods.reward !== j.reward ? ' stat-boosted' : '') + '">🪙 ' + mods.reward + '</span>' +
-          '<span class="stat' + (mods.damage !== j.damage ? ' stat-boosted' : '') + '">💔 -' + mods.damage + '</span>' +
-        '</div>' +
-        '<p class="jump-desc">' + j.desc + '</p>' +
-        '<div class="difficulty">' + '⭐'.repeat(j.difficulty) + '☆'.repeat(3 - j.difficulty) + '</div>';
-      card.addEventListener('click', () => selectJump(i));
-      box.appendChild(card);
-    });
+    var streakEl = $('#streak-indicator');
+    if (state.player.streak >= 2) {
+      var mult = state.player.streak >= 3 ? '2x' : '1.5x';
+      streakEl.textContent = '🔥 ' + state.player.streak + '-streak! (' + mult + ' coins)';
+      streakEl.classList.remove('hidden');
+    } else {
+      streakEl.classList.add('hidden');
+    }
+
+    renderHillSelector();
+    renderJumpCards();
 
     const btn = $('#btn-jump');
     btn.disabled = true;
     btn.onclick = attemptJump;
+  }
+
+  function renderHillSelector() {
+    var box = $('#hill-options');
+    box.innerHTML = '';
+    HILLS.forEach(function (h, i) {
+      var card = document.createElement('div');
+      card.className = 'hill-card' + (i === state.selectedHill ? ' selected' : '');
+      card.innerHTML =
+        '<span class="hill-emoji">' + h.emoji + '</span>' +
+        '<span class="hill-name">' + h.name + '</span>';
+      card.title = h.desc;
+      card.addEventListener('click', function () { selectHill(i); sfxClick(); });
+      box.appendChild(card);
+    });
+  }
+
+  function selectHill(i) {
+    state.selectedHill = i;
+    state.selectedJump = null;
+    $$('.hill-card').forEach(function (c, idx) { c.classList.toggle('selected', idx === i); });
+    renderJumpCards();
+    $('#btn-jump').disabled = true;
+    $$('.jump-card').forEach(function (c) { c.classList.remove('selected'); });
+  }
+
+  function renderJumpCards() {
+    var hill = HILLS[state.selectedHill];
+    var box = $('#jump-options');
+    box.innerHTML = '';
+    JUMPS.forEach(function (j, i) {
+      var base = { successRate: j.successRate, reward: j.reward, damage: j.damage };
+      var mods = applyMods(j, state.player.gear, hill);
+      var card = document.createElement('div');
+      card.className = 'jump-card' + (state.selectedJump === i ? ' selected' : '');
+      card.innerHTML =
+        '<div class="jump-emoji">' + j.emoji + '</div>' +
+        '<h3>' + j.name + '</h3>' +
+        '<div class="jump-stats">' +
+          '<span class="stat' + (mods.successRate !== base.successRate ? ' stat-boosted' : '') + '">🎯 ' + Math.round(mods.successRate * 100) + '%</span>' +
+          '<span class="stat' + (mods.reward !== base.reward ? ' stat-boosted' : '') + '">🪙 ' + mods.reward + '</span>' +
+          '<span class="stat' + (mods.damage !== base.damage ? ' stat-boosted' : '') + '">💔 -' + mods.damage + '</span>' +
+        '</div>' +
+        '<p class="jump-desc">' + j.desc + '</p>' +
+        '<div class="difficulty">' + '⭐'.repeat(j.difficulty) + '☆'.repeat(3 - j.difficulty) + '</div>';
+      card.addEventListener('click', function () { selectJump(i); sfxClick(); });
+      box.appendChild(card);
+    });
   }
 
   function selectJump(i) {
@@ -309,21 +431,36 @@
     $('#btn-jump').disabled = true;
 
     const jump = JUMPS[state.selectedJump];
-    var mods = applyGear(jump, state.player.gear);
+    var hill = HILLS[state.selectedHill];
+    var mods = applyMods(jump, state.player.gear, hill);
     const success = Math.random() < mods.successRate;
 
-    state.lastResult = { jump: jump, jumpIndex: state.selectedJump, success: success, modReward: mods.reward, modDamage: mods.damage };
     state.player.jumps++;
+    var coinsEarned = 0;
+    var streakCount = 0;
 
     if (success) {
+      state.player.streak++;
+      streakCount = state.player.streak;
+      var streakMult = streakCount >= 3 ? 2 : streakCount >= 2 ? 1.5 : 1;
+      coinsEarned = Math.round(mods.reward * streakMult);
       state.player.successes++;
-      state.player.coins += mods.reward;
-      state.player.totalCoins += mods.reward;
+      state.player.coins += coinsEarned;
+      state.player.totalCoins += coinsEarned;
     } else {
+      state.player.streak = 0;
       state.player.health = Math.max(0, state.player.health - mods.damage);
       if (state.player.health <= 0) state.player.alive = false;
     }
 
+    state.lastResult = {
+      jump: jump, jumpIndex: state.selectedJump, success: success,
+      modReward: mods.reward, modDamage: mods.damage,
+      coinsEarned: coinsEarned, streakCount: streakCount,
+      hillName: hill.name
+    };
+
+    sfxLaunch();
     showScreen('jump');
     setTimeout(beginJumpAnim, 400);
   }
@@ -637,13 +774,23 @@
     el.classList.remove('hidden');
 
     if (r.success) {
-      $('#result-text').textContent = '🎉 Nailed it!';
-      $('#result-text').className = 'result-success';
-      $('#result-detail').textContent = '+' + r.modReward + ' coins for the ' + r.jump.name + '!';
+      if (r.streakCount >= 2) {
+        var mult = r.streakCount >= 3 ? '2x' : '1.5x';
+        $('#result-text').textContent = '🔥 ' + r.streakCount + '-streak!';
+        $('#result-text').className = 'result-success result-streak';
+        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins (' + mult + ' bonus) for the ' + r.jump.name + '!';
+        sfxStreak();
+      } else {
+        $('#result-text').textContent = '🎉 Nailed it!';
+        $('#result-text').className = 'result-success';
+        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins for the ' + r.jump.name + '!';
+        sfxSuccess();
+      }
     } else {
       $('#result-text').textContent = '💥 Wipeout!';
       $('#result-text').className = 'result-fail';
       $('#result-detail').textContent = '-' + r.modDamage + ' health. That\'s gonna leave a mark!';
+      sfxWipeout();
     }
 
     const btn = $('#btn-to-chalet');
@@ -679,7 +826,8 @@
 
     const msg = $('#chalet-message');
     if (state.lastResult.success) {
-      msg.innerHTML = '<span class="msg-success">Great ' + state.lastResult.jump.name + '! 🎉</span> You earned <strong>' + state.lastResult.modReward + ' coins</strong>.';
+      var streakNote = state.lastResult.streakCount >= 2 ? ' (🔥 streak bonus!)' : '';
+      msg.innerHTML = '<span class="msg-success">Great ' + state.lastResult.jump.name + '! 🎉</span> You earned <strong>' + state.lastResult.coinsEarned + ' coins</strong>' + streakNote + '.';
     } else {
       msg.innerHTML = '<span class="msg-fail">Tough break on the ' + state.lastResult.jump.name + '.</span> You lost <strong>' + state.lastResult.modDamage + ' health</strong>. Time to refuel!';
     }
@@ -760,6 +908,7 @@
     if (state.player.coins >= item.cost && state.player.health < 100) {
       state.player.coins -= item.cost;
       state.player.health = Math.min(100, state.player.health + item.health);
+      sfxBuy();
       updateHUD();
       renderShop();
       renderGearShop();
@@ -801,6 +950,7 @@
     if (!item || state.player.gear.indexOf(id) >= 0 || state.player.coins < item.cost) return;
     state.player.coins -= item.cost;
     state.player.gear.push(id);
+    sfxBuy();
     updateHUD();
     renderGearShop();
     renderShop();
@@ -861,6 +1011,10 @@
 
   function init() {
     createSnowflakes();
+    $('#btn-sound').onclick = function () {
+      soundEnabled = !soundEnabled;
+      this.textContent = soundEnabled ? '🔊' : '🔇';
+    };
     initIntro();
   }
 
