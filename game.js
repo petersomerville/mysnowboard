@@ -24,6 +24,17 @@
     { name: 'Double Black', emoji: '💀', successMod: 0.75, rewardMod: 2.0, damageMod: 1.5, desc: 'Extreme terrain — huge payoff, huge pain.' }
   ];
 
+  const WEATHER = [
+    { name: 'Sunny', emoji: '☀️', successMod: 1.05, rewardMod: 1.0, desc: 'Bluebird day — great visibility!',
+      sky: ['#0a2a5e', '#2a6dbf', '#87ceeb'], sun: true, snowCount: 8, fog: 0, wind: 0 },
+    { name: 'Clear', emoji: '❄️', successMod: 1.0, rewardMod: 1.0, desc: 'Crisp winter air — standard conditions.',
+      sky: ['#0b1a3b', '#1a3d6d', '#5b9bd5'], sun: true, snowCount: 25, fog: 0, wind: 0 },
+    { name: 'Snowfall', emoji: '🌨️', successMod: 0.92, rewardMod: 1.0, desc: 'Heavy snow — watch your footing!',
+      sky: ['#2c3e50', '#546e7a', '#90a4ae'], sun: false, snowCount: 60, fog: 0.12, wind: 0.3 },
+    { name: 'Blizzard', emoji: '🌬️', successMod: 0.85, rewardMod: 1.5, desc: 'Whiteout! Huge risk, huge reward.',
+      sky: ['#546e7a', '#78909c', '#cfd8dc'], sun: false, snowCount: 120, fog: 0.3, wind: 0.7 }
+  ];
+
   var LB_KEY = 'mysnowboard_leaderboard';
 
   const COLORS = [
@@ -42,19 +53,20 @@
     _p2Color: 1,
     selectedJump: null,
     selectedHill: 1,
+    weather: 1,
     lastResult: null
   };
 
   var soundEnabled = true;
   var audioCtx;
 
-  let animCanvas, animCtx, animStart, animSuccess, animJumpIdx;
+  let animCanvas, animCtx, animStart, animSuccess, animJumpIdx, animWeather;
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  function applyMods(jump, gear, hill) {
+  function applyMods(jump, gear, hill, weather) {
     var rate = jump.successRate;
     var reward = jump.reward;
     var damage = jump.damage;
@@ -64,6 +76,10 @@
     rate = Math.min(0.95, rate * hill.successMod);
     reward = Math.round(reward * hill.rewardMod);
     damage = Math.max(5, Math.round(damage * hill.damageMod));
+    if (weather) {
+      rate = Math.min(0.95, rate * weather.successMod);
+      reward = Math.round(reward * weather.rewardMod);
+    }
     return { successRate: rate, reward: reward, damage: damage };
   }
 
@@ -334,7 +350,15 @@
   function initHill() {
     state.selectedJump = null;
     state.selectedHill = 1;
+    state.weather = Math.floor(Math.random() * WEATHER.length);
     updateHUD();
+
+    var w = WEATHER[state.weather];
+    var weatherEl = $('#weather-indicator');
+    weatherEl.innerHTML = '<span class="weather-emoji">' + w.emoji + '</span> ' + w.name;
+    weatherEl.title = w.desc;
+    weatherEl.className = 'weather-indicator weather-' + w.name.toLowerCase().replace(/\s/g, '-');
+    weatherEl.classList.remove('hidden');
 
     var turnEl = $('#turn-indicator');
     if (state.mode === 'versus') {
@@ -402,7 +426,7 @@
     box.innerHTML = '';
     JUMPS.forEach(function (j, i) {
       var base = { successRate: j.successRate, reward: j.reward, damage: j.damage };
-      var mods = applyMods(j, state.player.gear, hill);
+      var mods = applyMods(j, state.player.gear, hill, WEATHER[state.weather]);
       var card = document.createElement('div');
       card.className = 'jump-card' + (state.selectedJump === i ? ' selected' : '');
       card.innerHTML =
@@ -432,7 +456,8 @@
 
     const jump = JUMPS[state.selectedJump];
     var hill = HILLS[state.selectedHill];
-    var mods = applyMods(jump, state.player.gear, hill);
+    var weather = WEATHER[state.weather];
+    var mods = applyMods(jump, state.player.gear, hill, weather);
     const success = Math.random() < mods.successRate;
 
     state.player.jumps++;
@@ -457,7 +482,7 @@
       jump: jump, jumpIndex: state.selectedJump, success: success,
       modReward: mods.reward, modDamage: mods.damage,
       coinsEarned: coinsEarned, streakCount: streakCount,
-      hillName: hill.name
+      hillName: hill.name, weatherName: weather.name, weatherIdx: state.weather
     };
 
     sfxLaunch();
@@ -481,9 +506,10 @@
 
     animSuccess = state.lastResult.success;
     animJumpIdx = state.lastResult.jumpIndex;
+    animWeather = WEATHER[state.lastResult.weatherIdx];
     animStart = null;
 
-    $('#jump-title').textContent = 'Attempting: ' + state.lastResult.jump.name + ' ' + state.lastResult.jump.emoji;
+    $('#jump-title').textContent = 'Attempting: ' + state.lastResult.jump.name + ' ' + state.lastResult.jump.emoji + '  |  ' + animWeather.emoji + ' ' + animWeather.name;
     $('#jump-result').classList.add('hidden');
 
     requestAnimationFrame(tick);
@@ -504,22 +530,34 @@
   function drawScene(ctx, t) {
     const W = ctx.canvas.width;
     const H = ctx.canvas.height;
+    const wx = animWeather || WEATHER[1];
 
-    // sky
+    // sky — driven by weather
     const sky = ctx.createLinearGradient(0, 0, 0, H * 0.7);
-    sky.addColorStop(0, '#0b1a3b');
-    sky.addColorStop(0.45, '#1a3d6d');
-    sky.addColorStop(1, '#5b9bd5');
+    sky.addColorStop(0, wx.sky[0]);
+    sky.addColorStop(0.45, wx.sky[1]);
+    sky.addColorStop(1, wx.sky[2]);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
-    // sun
-    ctx.fillStyle = '#fff8dc';
-    ctx.beginPath(); ctx.arc(W * 0.86, H * 0.11, H * 0.055, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,248,220,0.25)';
-    ctx.beginPath(); ctx.arc(W * 0.86, H * 0.11, H * 0.1, 0, Math.PI * 2); ctx.fill();
+    // sun (only in sunny / clear)
+    if (wx.sun) {
+      var sunAlpha = wx.name === 'Sunny' ? 1.0 : 0.7;
+      ctx.globalAlpha = sunAlpha;
+      ctx.fillStyle = '#fff8dc';
+      ctx.beginPath(); ctx.arc(W * 0.86, H * 0.11, H * 0.055, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,248,220,0.25)';
+      ctx.beginPath(); ctx.arc(W * 0.86, H * 0.11, H * 0.1, 0, Math.PI * 2); ctx.fill();
+      if (wx.name === 'Sunny') {
+        ctx.fillStyle = 'rgba(255,248,220,0.10)';
+        ctx.beginPath(); ctx.arc(W * 0.86, H * 0.11, H * 0.18, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
 
-    // mountains
+    // mountains — fade with fog
+    var mtnAlpha = 1 - wx.fog * 1.5;
+    ctx.globalAlpha = Math.max(0.3, mtnAlpha);
     drawMtn(ctx, W * 0.0, H * 0.23, W * 0.36, '#1e3458');
     drawMtn(ctx, W * 0.26, H * 0.17, W * 0.42, '#1a2d4d');
     drawMtn(ctx, W * 0.6, H * 0.21, W * 0.44, '#162642');
@@ -527,6 +565,7 @@
     drawCap(ctx, W * 0.0, H * 0.23, W * 0.36, H * 0.035);
     drawCap(ctx, W * 0.26, H * 0.17, W * 0.42, H * 0.04);
     drawCap(ctx, W * 0.6, H * 0.21, W * 0.44, H * 0.035);
+    ctx.globalAlpha = 1;
 
     // slope fill
     ctx.fillStyle = '#e8f0f8';
@@ -548,12 +587,11 @@
       ctx.stroke();
     }
 
-    // kicker — wider, lower, realistic ramp profile
+    // kicker
     var ksX = W * 0.26, klX = W * 0.38;
     var ksY = slopeY(ksX, W, H), klY = ksY - H * 0.08;
     var backX = klX + W * 0.012, backY = slopeY(klX, W, H);
 
-    // shadow under ramp
     ctx.fillStyle = 'rgba(0,0,0,0.08)';
     ctx.beginPath();
     ctx.moveTo(ksX + W * 0.02, ksY + 4);
@@ -562,7 +600,6 @@
     ctx.lineTo(ksX + W * 0.02, ksY + 4);
     ctx.closePath(); ctx.fill();
 
-    // ramp fill
     ctx.fillStyle = '#d5dfe9';
     ctx.beginPath();
     ctx.moveTo(ksX, ksY);
@@ -571,14 +608,12 @@
     ctx.lineTo(ksX, ksY);
     ctx.closePath(); ctx.fill();
 
-    // ramp surface line
     ctx.strokeStyle = '#a0b0c0'; ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(ksX, ksY);
     ctx.bezierCurveTo(ksX + (klX - ksX) * 0.6, ksY, klX - (klX - ksX) * 0.15, lerp(ksY, klY, 0.3), klX, klY);
     ctx.stroke();
 
-    // lip edge
     ctx.strokeStyle = '#8a9ab0'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(klX, klY); ctx.lineTo(backX, backY); ctx.stroke();
 
@@ -587,13 +622,34 @@
       drawTree(ctx, W * px, slopeY(W * px, W, H), sc, W, H);
     });
 
-    // snow particles
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    for (let i = 0; i < 25; i++) {
+    // snow particles — count & size driven by weather
+    var snowCount = wx.snowCount;
+    var windDrift = wx.wind;
+    ctx.fillStyle = 'rgba(255,255,255,' + (wx.fog > 0 ? '0.8' : '0.65') + ')';
+    for (let i = 0; i < snowCount; i++) {
       const sp = 0.3 + (i % 5) * 0.14;
-      const sx = (i * 137.5 + t * 30 * (1 + i % 3)) % W;
+      const sx = (i * 137.5 + t * (30 + windDrift * 120) * (1 + i % 3)) % W;
       const sy = (i * 73.7 + t * 80 * sp) % H;
-      ctx.beginPath(); ctx.arc(sx, sy, 1 + (i % 3), 0, Math.PI * 2); ctx.fill();
+      var r = 1 + (i % 3) * (wx.fog > 0.2 ? 1.3 : 1);
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // wind streaks (blizzard / snowfall)
+    if (windDrift > 0) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (windDrift * 0.35) + ')';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < Math.floor(windDrift * 30); i++) {
+        var wy = (i * 53.3 + t * 200) % H;
+        var wxStart = (i * 97.7 + t * 300 * windDrift) % W;
+        var wLen = 20 + (i % 4) * 15;
+        ctx.beginPath(); ctx.moveTo(wxStart, wy); ctx.lineTo(wxStart + wLen, wy - 2); ctx.stroke();
+      }
+    }
+
+    // fog overlay
+    if (wx.fog > 0) {
+      ctx.fillStyle = 'rgba(200,210,220,' + wx.fog + ')';
+      ctx.fillRect(0, 0, W, H);
     }
 
     // trail while airborne
@@ -773,23 +829,27 @@
     const el = $('#jump-result');
     el.classList.remove('hidden');
 
+    var weatherBonus = r.weatherName === 'Blizzard' ? ' (🌬️ blizzard bonus!)' : '';
+
     if (r.success) {
       if (r.streakCount >= 2) {
         var mult = r.streakCount >= 3 ? '2x' : '1.5x';
         $('#result-text').textContent = '🔥 ' + r.streakCount + '-streak!';
         $('#result-text').className = 'result-success result-streak';
-        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins (' + mult + ' bonus) for the ' + r.jump.name + '!';
+        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins (' + mult + ' bonus) for the ' + r.jump.name + '!' + weatherBonus;
         sfxStreak();
       } else {
         $('#result-text').textContent = '🎉 Nailed it!';
         $('#result-text').className = 'result-success';
-        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins for the ' + r.jump.name + '!';
+        $('#result-detail').textContent = '+' + r.coinsEarned + ' coins for the ' + r.jump.name + '!' + weatherBonus;
         sfxSuccess();
       }
     } else {
+      var weatherNote = r.weatherName === 'Blizzard' ? ' Brutal in the blizzard!' :
+                        r.weatherName === 'Snowfall' ? ' The snow didn\'t help!' : '';
       $('#result-text').textContent = '💥 Wipeout!';
       $('#result-text').className = 'result-fail';
-      $('#result-detail').textContent = '-' + r.modDamage + ' health. That\'s gonna leave a mark!';
+      $('#result-detail').textContent = '-' + r.modDamage + ' health. That\'s gonna leave a mark!' + weatherNote;
       sfxWipeout();
     }
 
