@@ -41,7 +41,8 @@
     { name: 'Arctic Blue', primary: '#3498db', dark: '#2471a3' },
     { name: 'Fire Red', primary: '#e74c3c', dark: '#c0392b' },
     { name: 'Neon Green', primary: '#2ecc71', dark: '#1e8449' },
-    { name: 'Sunset Orange', primary: '#f39c12', dark: '#d68910' }
+    { name: 'Sunset Orange', primary: '#f39c12', dark: '#d68910' },
+    { name: 'Black', primary: '#252525', dark: '#0d0d0d' }
   ];
 
   let state = {
