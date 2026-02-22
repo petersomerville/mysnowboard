@@ -20,7 +20,12 @@
   ];
 
   let state = {
-    player: { name: '', colorIndex: 0, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0 },
+    mode: 'solo',
+    players: [],
+    currentPlayer: 0,
+    get player() { return this.players[this.currentPlayer]; },
+    _p1Color: 0,
+    _p2Color: 1,
     selectedJump: null,
     lastResult: null
   };
@@ -45,16 +50,31 @@
 
   // ==================== HUD ====================
 
+  function healthColor(h) {
+    return h > 60 ? '#2ecc71' : h > 30 ? '#f39c12' : '#e74c3c';
+  }
+
   function updateHUD() {
-    $$('.hud-name-val').forEach(el => { el.textContent = state.player.name; });
-    $$('.health-fill').forEach(el => {
-      el.style.width = state.player.health + '%';
-      if (state.player.health > 60) el.style.background = '#2ecc71';
-      else if (state.player.health > 30) el.style.background = '#f39c12';
-      else el.style.background = '#e74c3c';
+    $$('.hud').forEach(function (hud) {
+      if (state.mode === 'solo') {
+        var p = state.player;
+        hud.innerHTML =
+          '<div class="hud-item hud-name"><span>' + p.name + '</span></div>' +
+          '<div class="hud-item">❤️ <div class="health-bar"><div class="health-fill" style="width:' + p.health + '%;background:' + healthColor(p.health) + '"></div></div> <span>' + p.health + '</span></div>' +
+          '<div class="hud-item">🪙 <span>' + p.coins + '</span></div>';
+      } else {
+        hud.innerHTML = state.players.map(function (p, i) {
+          var active = i === state.currentPlayer;
+          var cls = 'hud-row' + (active ? ' hud-current' : '') + (p.alive ? '' : ' hud-out');
+          return '<div class="' + cls + '">' +
+            '<span class="hud-rname">' + p.name + (active ? ' 🎿' : '') + '</span>' +
+            '<span>❤️</span><div class="health-bar"><div class="health-fill" style="width:' + p.health + '%;background:' + healthColor(p.health) + '"></div></div><span>' + p.health + '</span>' +
+            '<span>🪙 ' + p.coins + '</span>' +
+            (!p.alive ? '<span class="hud-eliminated">OUT</span>' : '') +
+          '</div>';
+        }).join('');
+      }
     });
-    $$('.health-text').forEach(el => { el.textContent = state.player.health; });
-    $$('.coins-text').forEach(el => { el.textContent = state.player.coins; });
   }
 
   // ==================== SNOWFLAKES ====================
@@ -76,49 +96,94 @@
 
   // ==================== INTRO ====================
 
-  function initIntro() {
-    const opts = $('#color-options');
-    opts.innerHTML = '';
-    COLORS.forEach((c, i) => {
-      const b = document.createElement('button');
-      b.className = 'color-btn' + (i === 0 ? ' selected' : '');
+  function initColorPicker(selector, defaultIdx, onChange) {
+    var container = $(selector);
+    container.innerHTML = '';
+    COLORS.forEach(function (c, i) {
+      var b = document.createElement('button');
+      b.className = 'color-btn' + (i === defaultIdx ? ' selected' : '');
       b.style.background = c.primary;
       b.title = c.name;
-      b.addEventListener('click', () => pickColor(i));
-      opts.appendChild(b);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        container.querySelectorAll('.color-btn').forEach(function (btn, idx) {
+          btn.classList.toggle('selected', idx === i);
+        });
+        onChange(i);
+      });
+      container.appendChild(b);
     });
-    state.player.colorIndex = 0;
-    updatePreview();
+  }
 
-    const inp = $('#player-name');
-    const btn = $('#btn-start');
-    inp.value = '';
+  function initIntro() {
+    state.mode = 'solo';
+    state._p1Color = 0;
+    state._p2Color = 1;
+
+    $('#mode-solo').classList.add('selected');
+    $('#mode-versus').classList.remove('selected');
+    $('#p2-setup').classList.add('hidden');
+    $('#p1-label').classList.add('hidden');
+
+    var p1inp = $('#p1-name');
+    var p2inp = $('#p2-name');
+    var btn = $('#btn-start');
+    p1inp.value = '';
+    p2inp.value = '';
     btn.disabled = true;
-    inp.addEventListener('input', () => { btn.disabled = !inp.value.trim(); });
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btn.disabled) startGame(); });
+
+    function checkStart() {
+      var p1ok = p1inp.value.trim().length > 0;
+      var p2ok = state.mode === 'solo' || p2inp.value.trim().length > 0;
+      btn.disabled = !(p1ok && p2ok);
+    }
+
+    $('#mode-solo').onclick = function () {
+      state.mode = 'solo';
+      $('#mode-solo').classList.add('selected');
+      $('#mode-versus').classList.remove('selected');
+      $('#p2-setup').classList.add('hidden');
+      $('#p1-label').classList.add('hidden');
+      checkStart();
+    };
+
+    $('#mode-versus').onclick = function () {
+      state.mode = 'versus';
+      $('#mode-versus').classList.add('selected');
+      $('#mode-solo').classList.remove('selected');
+      $('#p2-setup').classList.remove('hidden');
+      $('#p1-label').classList.remove('hidden');
+      checkStart();
+    };
+
+    initColorPicker('#p1-colors', 0, function (i) { state._p1Color = i; });
+    initColorPicker('#p2-colors', 1, function (i) { state._p2Color = i; });
+
+    p1inp.addEventListener('input', checkStart);
+    p2inp.addEventListener('input', checkStart);
+    p1inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !btn.disabled) startGame(); });
+    p2inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !btn.disabled) startGame(); });
     btn.addEventListener('click', startGame);
-    setTimeout(() => inp.focus(), 400);
+    setTimeout(function () { p1inp.focus(); }, 400);
   }
 
-  function pickColor(i) {
-    state.player.colorIndex = i;
-    $$('.color-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
-    updatePreview();
-  }
-
-  function updatePreview() {
-    $('#preview-boarder').style.color = COLORS[state.player.colorIndex].primary;
+  function newPlayer(name, colorIdx) {
+    return { name: name, colorIndex: colorIdx, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0, alive: true };
   }
 
   function startGame() {
-    const name = $('#player-name').value.trim();
-    if (!name) return;
-    state.player.name = name;
-    state.player.health = 100;
-    state.player.coins = 0;
-    state.player.totalCoins = 0;
-    state.player.jumps = 0;
-    state.player.successes = 0;
+    var p1name = $('#p1-name').value.trim();
+    if (!p1name) return;
+
+    state.players = [newPlayer(p1name, state._p1Color)];
+
+    if (state.mode === 'versus') {
+      var p2name = $('#p2-name').value.trim();
+      if (!p2name) return;
+      state.players.push(newPlayer(p2name, state._p2Color));
+    }
+
+    state.currentPlayer = 0;
     state.selectedJump = null;
     state.lastResult = null;
     updateHUD();
@@ -131,6 +196,14 @@
   function initHill() {
     state.selectedJump = null;
     updateHUD();
+
+    var turnEl = $('#turn-indicator');
+    if (state.mode === 'versus') {
+      turnEl.textContent = '🎿 ' + state.player.name + "'s Turn!";
+      turnEl.classList.remove('hidden');
+    } else {
+      turnEl.classList.add('hidden');
+    }
 
     const box = $('#jump-options');
     box.innerHTML = '';
@@ -178,6 +251,7 @@
       state.player.totalCoins += jump.reward;
     } else {
       state.player.health = Math.max(0, state.player.health - jump.damage);
+      if (state.player.health <= 0) state.player.alive = false;
     }
 
     showScreen('jump');
@@ -267,19 +341,39 @@
       ctx.stroke();
     }
 
-    // kicker
-    const kx = W * 0.33, ktx = W * 0.37;
-    const kby = slopeY(kx, W, H), kh = H * 0.13;
+    // kicker — wider, lower, realistic ramp profile
+    var ksX = W * 0.26, klX = W * 0.38;
+    var ksY = slopeY(ksX, W, H), klY = ksY - H * 0.08;
+    var backX = klX + W * 0.012, backY = slopeY(klX, W, H);
+
+    // shadow under ramp
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.beginPath();
+    ctx.moveTo(ksX + W * 0.02, ksY + 4);
+    ctx.bezierCurveTo(ksX + (klX - ksX) * 0.6, ksY + 4, klX - (klX - ksX) * 0.15, lerp(ksY, klY, 0.3) + 4, klX, klY + 4);
+    ctx.lineTo(backX + 2, backY + 4);
+    ctx.lineTo(ksX + W * 0.02, ksY + 4);
+    ctx.closePath(); ctx.fill();
+
+    // ramp fill
     ctx.fillStyle = '#d5dfe9';
     ctx.beginPath();
-    ctx.moveTo(kx, kby);
-    ctx.quadraticCurveTo(kx + (ktx - kx) * 0.3, kby, ktx, kby - kh);
-    ctx.lineTo(ktx, kby);
+    ctx.moveTo(ksX, ksY);
+    ctx.bezierCurveTo(ksX + (klX - ksX) * 0.6, ksY, klX - (klX - ksX) * 0.15, lerp(ksY, klY, 0.3), klX, klY);
+    ctx.lineTo(backX, backY);
+    ctx.lineTo(ksX, ksY);
     ctx.closePath(); ctx.fill();
+
+    // ramp surface line
     ctx.strokeStyle = '#a0b0c0'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(kx, kby);
-    ctx.quadraticCurveTo(kx + (ktx - kx) * 0.3, kby, ktx, kby - kh);
+    ctx.beginPath();
+    ctx.moveTo(ksX, ksY);
+    ctx.bezierCurveTo(ksX + (klX - ksX) * 0.6, ksY, klX - (klX - ksX) * 0.15, lerp(ksY, klY, 0.3), klX, klY);
     ctx.stroke();
+
+    // lip edge
+    ctx.strokeStyle = '#8a9ab0'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(klX, klY); ctx.lineTo(backX, backY); ctx.stroke();
 
     // trees
     [[0.07, 0.55], [0.14, 0.75], [0.83, 0.65], [0.91, 0.85], [0.96, 0.5]].forEach(([px, sc]) => {
@@ -369,28 +463,28 @@
   }
 
   function boarderPos(t, W, H) {
-    const kx = W * 0.33, ktx = W * 0.37;
-    const kby = slopeY(kx, W, H);
-    const kty = kby - H * 0.13;
+    const ksX = W * 0.26, klX = W * 0.38;
+    const ksY = slopeY(ksX, W, H);
+    const klY = ksY - H * 0.08;
     const lx = W * 0.72, ly = slopeY(lx, W, H);
     const peakY = H * 0.06;
     const off = -14;
 
-    if (t < 0.25) {
-      const p = t / 0.25;
-      const x = lerp(W * 0.04, kx, p);
+    if (t < 0.22) {
+      const p = t / 0.22;
+      const x = lerp(W * 0.04, ksX, p);
       return { x, y: slopeY(x, W, H) + off };
     }
     if (t < 0.35) {
-      const p = (t - 0.25) / 0.10;
-      const x = lerp(kx, ktx, p);
-      const y = lerp(kby, kty, p * p);
+      const p = (t - 0.22) / 0.13;
+      const x = lerp(ksX, klX, p);
+      const y = lerp(ksY, klY, p * p);
       return { x, y: y + off };
     }
     if (t < 0.75) {
       const p = (t - 0.35) / 0.40;
-      const x = lerp(ktx, lx, p);
-      const y = (1 - p) * (1 - p) * kty + 2 * (1 - p) * p * peakY + p * p * ly;
+      const x = lerp(klX, lx, p);
+      const y = (1 - p) * (1 - p) * klY + 2 * (1 - p) * p * peakY + p * p * ly;
       return { x, y: y + off };
     }
     const p = (t - 0.75) / 0.25;
@@ -406,8 +500,8 @@
 
   function boarderRot(t) {
     const slope = 0.22;
-    if (t < 0.25) return slope;
-    if (t < 0.35) return lerp(slope, -0.3, (t - 0.25) / 0.10);
+    if (t < 0.22) return slope;
+    if (t < 0.35) return lerp(slope, -0.3, (t - 0.22) / 0.13);
     if (t < 0.75) {
       const p = (t - 0.35) / 0.40;
       if (animJumpIdx === 0) return Math.sin(p * Math.PI) * -0.2;
@@ -484,11 +578,27 @@
 
     const btn = $('#btn-to-chalet');
     if (state.player.health <= 0) {
-      btn.textContent = 'Game Over...';
-      btn.onclick = () => { showScreen('gameover'); setTimeout(initGameOver, 350); };
+      if (state.mode === 'versus') {
+        var otherIdx = 1 - state.currentPlayer;
+        var other = state.players[otherIdx];
+        if (other.alive) {
+          btn.textContent = state.player.name + ' is eliminated! ' + other.name + ' continues...';
+          btn.onclick = function () {
+            state.currentPlayer = otherIdx;
+            showScreen('hill');
+            setTimeout(initHill, 350);
+          };
+        } else {
+          btn.textContent = 'Game Over...';
+          btn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
+        }
+      } else {
+        btn.textContent = 'Game Over...';
+        btn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
+      }
     } else {
       btn.textContent = 'Head to the Chalet 🏔️';
-      btn.onclick = () => { showScreen('chalet'); setTimeout(initChalet, 350); };
+      btn.onclick = function () { showScreen('chalet'); setTimeout(initChalet, 350); };
     }
   }
 
@@ -508,14 +618,48 @@
 
     $('#stat-jumps').textContent = state.player.jumps;
     $('#stat-successes').textContent = state.player.successes;
-    $('#btn-to-hill').onclick = () => { showScreen('hill'); setTimeout(initHill, 350); };
+
+    var hillBtn = $('#btn-to-hill');
+    if (state.mode === 'versus') {
+      var otherIdx = 1 - state.currentPlayer;
+      var other = state.players[otherIdx];
+      if (other.alive) {
+        hillBtn.textContent = other.name + "'s Turn! 🔄";
+        hillBtn.onclick = function () {
+          state.currentPlayer = otherIdx;
+          showScreen('hill');
+          setTimeout(initHill, 350);
+        };
+      } else {
+        hillBtn.textContent = 'Back to the Hill! ⛰️';
+        hillBtn.onclick = function () { showScreen('hill'); setTimeout(initHill, 350); };
+      }
+    } else {
+      hillBtn.textContent = 'Back to the Hill! ⛰️';
+      hillBtn.onclick = function () { showScreen('hill'); setTimeout(initHill, 350); };
+    }
   }
 
   function renderShop() {
     const box = $('#shop-items');
     box.innerHTML = '';
+
+    var fullHealthBanner = $('#shop-full-health');
+    if (state.player.health >= 100) {
+      fullHealthBanner.textContent = '✨ You\'re at full health — no need to refuel!';
+      fullHealthBanner.classList.remove('hidden');
+    } else {
+      fullHealthBanner.classList.add('hidden');
+    }
+
     SHOP.forEach((item, i) => {
-      const canBuy = state.player.coins >= item.cost && state.player.health < 100;
+      const atFull = state.player.health >= 100;
+      const canAfford = state.player.coins >= item.cost;
+      const canBuy = canAfford && !atFull;
+      var reason = '';
+      if (atFull) reason = 'Already at full health';
+      else if (!canAfford) reason = 'Need ' + (item.cost - state.player.coins) + ' more coins';
+
       const card = document.createElement('div');
       card.className = 'shop-card' + (canBuy ? '' : ' disabled');
       card.innerHTML =
@@ -523,7 +667,8 @@
         '<h4>' + item.name + '</h4>' +
         '<p class="shop-desc">' + item.desc + '</p>' +
         '<div class="shop-stats"><span>❤️ +' + item.health + '</span><span>🪙 ' + item.cost + '</span></div>' +
-        '<button class="btn btn-shop"' + (canBuy ? '' : ' disabled') + '>Buy</button>';
+        '<button class="btn btn-shop"' + (canBuy ? '' : ' disabled') + '>Buy</button>' +
+        (reason ? '<p class="shop-reason">' + reason + '</p>' : '');
       card.querySelector('.btn-shop').addEventListener('click', () => buyItem(i));
       box.appendChild(card);
     });
@@ -542,13 +687,46 @@
   // ==================== GAME OVER ====================
 
   function initGameOver() {
-    $('#final-name').textContent = state.player.name;
-    $('#final-jumps').textContent = state.player.jumps;
-    $('#final-successes').textContent = state.player.successes;
-    $('#final-coins').textContent = state.player.totalCoins;
-    $('#btn-restart').onclick = () => {
+    var soloEl = $('#solo-stats');
+    var versusEl = $('#versus-stats');
+    var title = $('.gameover-title');
+    var sub = $('.gameover-sub');
+
+    if (state.mode === 'versus') {
+      soloEl.classList.add('hidden');
+      versusEl.classList.remove('hidden');
+
+      var p1 = state.players[0], p2 = state.players[1];
+      var winIdx;
+      if (p1.alive && !p2.alive) winIdx = 0;
+      else if (p2.alive && !p1.alive) winIdx = 1;
+      else winIdx = p1.totalCoins >= p2.totalCoins ? 0 : 1;
+
+      title.textContent = '🏆 Game Over!';
+      sub.textContent = state.players[winIdx].name + ' wins!';
+
+      versusEl.innerHTML = state.players.map(function (p, i) {
+        var w = i === winIdx;
+        return '<div class="versus-player' + (w ? ' winner' : '') + '">' +
+          '<h4>' + (w ? '🏆 ' : '') + p.name + '</h4>' +
+          '<div class="stat-row"><span>Jumps</span><strong>' + p.jumps + '</strong></div>' +
+          '<div class="stat-row"><span>Landed</span><strong>' + p.successes + '</strong></div>' +
+          '<div class="stat-row"><span>Coins</span><strong>' + p.totalCoins + '</strong></div>' +
+        '</div>';
+      }).join('');
+    } else {
+      soloEl.classList.remove('hidden');
+      versusEl.classList.add('hidden');
+      title.textContent = '💥 Wipeout!';
+      sub.textContent = state.players[0].name + ' is too injured to continue.';
+      $('#final-jumps').textContent = state.players[0].jumps;
+      $('#final-successes').textContent = state.players[0].successes;
+      $('#final-coins').textContent = state.players[0].totalCoins;
+    }
+
+    $('#btn-restart').onclick = function () {
       showScreen('intro');
-      setTimeout(() => $('#player-name').focus(), 400);
+      setTimeout(function () { $('#p1-name').focus(); }, 400);
     };
   }
 

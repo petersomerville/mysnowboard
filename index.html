@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
 </head>
 <body>
   <div id="snowflakes"></div>
@@ -20,18 +22,33 @@
         <p class="subtitle">Hit the slopes and master the mountain!</p>
 
         <div class="intro-form">
-          <div class="form-group">
-            <label for="player-name">Name Your Snowboarder</label>
-            <input type="text" id="player-name" placeholder="Enter name..." maxlength="20" autocomplete="off">
+          <div class="mode-selector">
+            <button id="mode-solo" class="mode-btn selected" type="button">Solo</button>
+            <button id="mode-versus" class="mode-btn" type="button">2 Players</button>
           </div>
 
-          <div class="form-group">
-            <label>Choose Your Style</label>
-            <div id="color-options" class="color-options"></div>
+          <div class="player-setup" id="p1-setup">
+            <h3 class="player-label hidden" id="p1-label">Player 1</h3>
+            <div class="form-group">
+              <label for="p1-name">Name Your Snowboarder</label>
+              <input type="text" id="p1-name" placeholder="Enter name..." maxlength="20" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Choose Your Style</label>
+              <div id="p1-colors" class="color-options"></div>
+            </div>
           </div>
 
-          <div class="boarder-preview">
-            <span id="preview-boarder" class="preview-figure">🏂</span>
+          <div class="player-setup hidden" id="p2-setup">
+            <h3 class="player-label">Player 2</h3>
+            <div class="form-group">
+              <label for="p2-name">Name Your Snowboarder</label>
+              <input type="text" id="p2-name" placeholder="Enter name..." maxlength="20" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Choose Your Style</label>
+              <div id="p2-colors" class="color-options"></div>
+            </div>
           </div>
 
           <button id="btn-start" class="btn btn-primary" disabled>Hit the Slopes!</button>
@@ -51,6 +68,7 @@
           <div class="hud-item">🪙 <span class="coins-text">0</span></div>
         </div>
 
+        <p id="turn-indicator" class="turn-indicator hidden"></p>
         <h2>⛰️ Top of the Hill</h2>
         <p class="screen-desc">Choose your trick, then send it!</p>
 
@@ -92,6 +110,7 @@
 
         <div class="shop">
           <h3>🍽️ Refuel &amp; Recover</h3>
+          <p id="shop-full-health" class="shop-full-health hidden"></p>
           <div id="shop-items" class="shop-items"></div>
         </div>
 
@@ -110,11 +129,12 @@
         <h1 class="gameover-title">💥 Wipeout!</h1>
         <p class="gameover-sub"><span id="final-name"></span> is too injured to continue.</p>
 
-        <div class="final-stats">
+        <div id="solo-stats" class="final-stats">
           <div class="stat-row"><span>Total Jumps</span><strong id="final-jumps">0</strong></div>
           <div class="stat-row"><span>Tricks Landed</span><strong id="final-successes">0</strong></div>
           <div class="stat-row"><span>Coins Earned</span><strong id="final-coins">0</strong></div>
         </div>
+        <div id="versus-stats" class="versus-stats hidden"></div>
 
         <button id="btn-restart" class="btn btn-primary">Try Again! 🏂</button>
       </div>

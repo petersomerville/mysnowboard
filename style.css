@@ -18,6 +18,8 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+.hidden { display: none !important; }
+
 body {
   font-family: 'Fredoka', system-ui, -apple-system, sans-serif;
   background: linear-gradient(150deg, var(--bg-dark) 0%, var(--bg-mid) 50%, var(--bg-light) 100%);
@@ -92,6 +94,74 @@ h2 {
   color: var(--text-dim);
   text-align: center;
   font-size: 1rem;
+}
+
+/* ========== MODE SELECTOR ========== */
+
+.mode-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: 2px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.mode-btn:hover {
+  background: var(--card-bg-hover);
+}
+
+.mode-btn.selected {
+  background: var(--card-selected);
+  border-color: var(--card-selected-border);
+  color: var(--text);
+}
+
+/* ========== PLAYER SETUP ========== */
+
+.player-setup {
+  width: 100%;
+}
+
+.player-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.player-label.hidden {
+  display: none;
+}
+
+/* ========== TURN INDICATOR ========== */
+
+.turn-indicator {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 20px;
+  background: var(--card-selected);
+  border: 2px solid var(--card-selected-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.turn-indicator.hidden {
+  display: none;
 }
 
 /* ========== INTRO ========== */
@@ -285,6 +355,45 @@ h2 {
   min-width: 22px;
 }
 
+/* ========== 2P HUD ROWS ========== */
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+  opacity: 0.5;
+  font-size: 0.85rem;
+  transition: opacity 0.3s;
+}
+
+.hud-row.hud-current {
+  opacity: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.hud-row.hud-out {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+.hud-rname {
+  min-width: 70px;
+  white-space: nowrap;
+}
+
+.hud-eliminated {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: rgba(231, 76, 60, 0.2);
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: auto;
+}
+
 /* ========== JUMP CARDS ========== */
 
 .jump-options {
@@ -460,6 +569,28 @@ h2 {
   opacity: 0.45;
 }
 
+.shop-reason {
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.shop-full-health {
+  font-size: 0.9rem;
+  color: var(--success);
+  text-align: center;
+  padding: 8px 14px;
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.shop-full-health.hidden {
+  display: none;
+}
+
 .shop-emoji {
   font-size: 2.2rem;
 }
@@ -497,6 +628,44 @@ h2 {
 
 .stats-box p {
   color: var(--text-dim);
+}
+
+/* ========== VERSUS STATS ========== */
+
+.versus-stats {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.versus-stats.hidden {
+  display: none;
+}
+
+.versus-player {
+  flex: 1;
+  min-width: 180px;
+  padding: 18px 16px;
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.versus-player.winner {
+  border-color: var(--card-selected-border);
+  background: var(--card-selected);
+}
+
+.versus-player h4 {
+  font-size: 1.05rem;
+  text-align: center;
+  margin-bottom: 4px;
 }
 
 /* ========== GAME OVER ========== */
