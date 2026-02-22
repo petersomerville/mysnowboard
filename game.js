@@ -12,6 +12,14 @@
     { name: 'Hot Chocolate', emoji: '☕', health: 40, cost: 25, desc: 'Warms the soul, heals the body.' }
   ];
 
+  const GEAR = [
+    { id: 'boots', name: 'Pro Boots', emoji: '🥾', cost: 30, desc: '+8% success on all tricks' },
+    { id: 'board', name: 'Carbon Board', emoji: '🏂', cost: 40, desc: '+5 bonus coins per trick' },
+    { id: 'helmet', name: 'Safety Helmet', emoji: '⛑️', cost: 35, desc: '-8 crash damage' }
+  ];
+
+  var LB_KEY = 'mysnowboard_leaderboard';
+
   const COLORS = [
     { name: 'Arctic Blue', primary: '#3498db', dark: '#2471a3' },
     { name: 'Fire Red', primary: '#e74c3c', dark: '#c0392b' },
@@ -35,6 +43,53 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
   const lerp = (a, b, t) => a + (b - a) * t;
+
+  function applyGear(jump, gear) {
+    var rate = jump.successRate;
+    var reward = jump.reward;
+    var damage = jump.damage;
+    if (gear.indexOf('boots') >= 0) rate = Math.min(0.95, rate + 0.08);
+    if (gear.indexOf('board') >= 0) reward += 5;
+    if (gear.indexOf('helmet') >= 0) damage = Math.max(5, damage - 8);
+    return { successRate: rate, reward: reward, damage: damage };
+  }
+
+  function loadLeaderboard() {
+    try { var d = localStorage.getItem(LB_KEY); return d ? JSON.parse(d) : []; }
+    catch (e) { return []; }
+  }
+
+  function saveToLeaderboard(name, coins, jumps, successes) {
+    var lb = loadLeaderboard();
+    lb.push({ name: name, coins: coins, jumps: jumps, successes: successes, date: new Date().toLocaleDateString() });
+    lb.sort(function (a, b) { return b.coins - a.coins; });
+    lb = lb.slice(0, 10);
+    try { localStorage.setItem(LB_KEY, JSON.stringify(lb)); } catch (e) {}
+    return lb;
+  }
+
+  function renderLeaderboard(el) {
+    var lb = loadLeaderboard();
+    if (lb.length === 0) { el.innerHTML = '<p class="lb-empty">No runs yet — be the first!</p>'; return; }
+    var html = '<table class="lb-table"><thead><tr><th>#</th><th>Name</th><th>🪙</th><th>Landed</th></tr></thead><tbody>';
+    lb.forEach(function (e, i) {
+      var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+      html += '<tr><td>' + medal + '</td><td>' + e.name + '</td><td>' + e.coins + '</td><td>' + e.successes + '/' + e.jumps + '</td></tr>';
+    });
+    el.innerHTML = html + '</tbody></table>';
+  }
+
+  // ==================== MODAL ====================
+
+  function showModal(title, message, onConfirm) {
+    var overlay = $('#modal-confirm');
+    $('#modal-title').textContent = title;
+    $('#modal-message').textContent = message;
+    overlay.classList.remove('hidden');
+    $('#modal-yes').onclick = function () { overlay.classList.add('hidden'); onConfirm(); };
+    $('#modal-no').onclick = function () { overlay.classList.add('hidden'); };
+    overlay.onclick = function (e) { if (e.target === overlay) overlay.classList.add('hidden'); };
+  }
 
   // ==================== SCREENS ====================
 
@@ -164,11 +219,12 @@
     p1inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !btn.disabled) startGame(); });
     p2inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !btn.disabled) startGame(); });
     btn.addEventListener('click', startGame);
+    renderLeaderboard($('#lb-intro'));
     setTimeout(function () { p1inp.focus(); }, 400);
   }
 
   function newPlayer(name, colorIdx) {
-    return { name: name, colorIndex: colorIdx, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0, alive: true };
+    return { name: name, colorIndex: colorIdx, health: 100, coins: 0, totalCoins: 0, jumps: 0, successes: 0, alive: true, gear: [] };
   }
 
   function startGame() {
@@ -205,18 +261,31 @@
       turnEl.classList.add('hidden');
     }
 
+    var gearEl = $('#equipped-gear');
+    if (state.player.gear.length > 0) {
+      gearEl.innerHTML = state.player.gear.map(function (id) {
+        var g = GEAR.find(function (x) { return x.id === id; });
+        return g ? '<span class="gear-badge" title="' + g.name + '">' + g.emoji + '</span>' : '';
+      }).join('');
+      gearEl.classList.remove('hidden');
+    } else {
+      gearEl.classList.add('hidden');
+    }
+
     const box = $('#jump-options');
     box.innerHTML = '';
     JUMPS.forEach((j, i) => {
+      var mods = applyGear(j, state.player.gear);
+      var boosted = mods.successRate !== j.successRate || mods.reward !== j.reward || mods.damage !== j.damage;
       const card = document.createElement('div');
       card.className = 'jump-card';
       card.innerHTML =
         '<div class="jump-emoji">' + j.emoji + '</div>' +
         '<h3>' + j.name + '</h3>' +
         '<div class="jump-stats">' +
-          '<span class="stat">🎯 ' + Math.round(j.successRate * 100) + '%</span>' +
-          '<span class="stat">🪙 ' + j.reward + '</span>' +
-          '<span class="stat">💔 -' + j.damage + '</span>' +
+          '<span class="stat' + (mods.successRate !== j.successRate ? ' stat-boosted' : '') + '">🎯 ' + Math.round(mods.successRate * 100) + '%</span>' +
+          '<span class="stat' + (mods.reward !== j.reward ? ' stat-boosted' : '') + '">🪙 ' + mods.reward + '</span>' +
+          '<span class="stat' + (mods.damage !== j.damage ? ' stat-boosted' : '') + '">💔 -' + mods.damage + '</span>' +
         '</div>' +
         '<p class="jump-desc">' + j.desc + '</p>' +
         '<div class="difficulty">' + '⭐'.repeat(j.difficulty) + '☆'.repeat(3 - j.difficulty) + '</div>';
@@ -240,17 +309,18 @@
     $('#btn-jump').disabled = true;
 
     const jump = JUMPS[state.selectedJump];
-    const success = Math.random() < jump.successRate;
+    var mods = applyGear(jump, state.player.gear);
+    const success = Math.random() < mods.successRate;
 
-    state.lastResult = { jump, jumpIndex: state.selectedJump, success };
+    state.lastResult = { jump: jump, jumpIndex: state.selectedJump, success: success, modReward: mods.reward, modDamage: mods.damage };
     state.player.jumps++;
 
     if (success) {
       state.player.successes++;
-      state.player.coins += jump.reward;
-      state.player.totalCoins += jump.reward;
+      state.player.coins += mods.reward;
+      state.player.totalCoins += mods.reward;
     } else {
-      state.player.health = Math.max(0, state.player.health - jump.damage);
+      state.player.health = Math.max(0, state.player.health - mods.damage);
       if (state.player.health <= 0) state.player.alive = false;
     }
 
@@ -569,11 +639,11 @@
     if (r.success) {
       $('#result-text').textContent = '🎉 Nailed it!';
       $('#result-text').className = 'result-success';
-      $('#result-detail').textContent = '+' + r.jump.reward + ' coins for the ' + r.jump.name + '!';
+      $('#result-detail').textContent = '+' + r.modReward + ' coins for the ' + r.jump.name + '!';
     } else {
       $('#result-text').textContent = '💥 Wipeout!';
       $('#result-text').className = 'result-fail';
-      $('#result-detail').textContent = '-' + r.jump.damage + ' health. That\'s gonna leave a mark!';
+      $('#result-detail').textContent = '-' + r.modDamage + ' health. That\'s gonna leave a mark!';
     }
 
     const btn = $('#btn-to-chalet');
@@ -609,12 +679,13 @@
 
     const msg = $('#chalet-message');
     if (state.lastResult.success) {
-      msg.innerHTML = '<span class="msg-success">Great ' + state.lastResult.jump.name + '! 🎉</span> You earned <strong>' + state.lastResult.jump.reward + ' coins</strong>.';
+      msg.innerHTML = '<span class="msg-success">Great ' + state.lastResult.jump.name + '! 🎉</span> You earned <strong>' + state.lastResult.modReward + ' coins</strong>.';
     } else {
-      msg.innerHTML = '<span class="msg-fail">Tough break on the ' + state.lastResult.jump.name + '.</span> You lost <strong>' + state.lastResult.jump.damage + ' health</strong>. Time to refuel!';
+      msg.innerHTML = '<span class="msg-fail">Tough break on the ' + state.lastResult.jump.name + '.</span> You lost <strong>' + state.lastResult.modDamage + ' health</strong>. Time to refuel!';
     }
 
     renderShop();
+    renderGearShop();
 
     $('#stat-jumps').textContent = state.player.jumps;
     $('#stat-successes').textContent = state.player.successes;
@@ -638,6 +709,16 @@
       hillBtn.textContent = 'Back to the Hill! ⛰️';
       hillBtn.onclick = function () { showScreen('hill'); setTimeout(initHill, 350); };
     }
+
+    $('#btn-stop-day').onclick = function () {
+      showModal('Stop for the day?', 'Your scores will be saved to the leaderboard.', function () {
+        state.players.forEach(function (p) {
+          saveToLeaderboard(p.name, p.totalCoins, p.jumps, p.successes);
+        });
+        showScreen('intro');
+        setTimeout(initIntro, 350);
+      });
+    };
   }
 
   function renderShop() {
@@ -681,7 +762,48 @@
       state.player.health = Math.min(100, state.player.health + item.health);
       updateHUD();
       renderShop();
+      renderGearShop();
     }
+  }
+
+  function renderGearShop() {
+    var box = $('#gear-items');
+    box.innerHTML = '';
+    GEAR.forEach(function (g) {
+      var owned = state.player.gear.indexOf(g.id) >= 0;
+      var canAfford = state.player.coins >= g.cost;
+      var canBuy = !owned && canAfford;
+      var card = document.createElement('div');
+      card.className = 'shop-card' + (owned ? ' owned' : (!canBuy ? ' disabled' : ''));
+      var btnHtml, reasonHtml = '';
+      if (owned) {
+        btnHtml = '<span class="gear-equipped">Equipped</span>';
+      } else {
+        btnHtml = '<button class="btn btn-gear"' + (canBuy ? '' : ' disabled') + '>Buy</button>';
+        if (!canAfford) reasonHtml = '<p class="shop-reason">Need ' + (g.cost - state.player.coins) + ' more coins</p>';
+      }
+      card.innerHTML =
+        '<div class="shop-emoji">' + g.emoji + '</div>' +
+        '<h4>' + g.name + '</h4>' +
+        '<p class="shop-desc">' + g.desc + '</p>' +
+        '<div class="shop-stats"><span>🪙 ' + g.cost + '</span></div>' +
+        btnHtml + reasonHtml;
+      if (!owned) {
+        var buyBtn = card.querySelector('.btn-gear');
+        if (buyBtn) buyBtn.addEventListener('click', function () { buyGear(g.id); });
+      }
+      box.appendChild(card);
+    });
+  }
+
+  function buyGear(id) {
+    var item = GEAR.find(function (g) { return g.id === id; });
+    if (!item || state.player.gear.indexOf(id) >= 0 || state.player.coins < item.cost) return;
+    state.player.coins -= item.cost;
+    state.player.gear.push(id);
+    updateHUD();
+    renderGearShop();
+    renderShop();
   }
 
   // ==================== GAME OVER ====================
@@ -724,9 +846,14 @@
       $('#final-coins').textContent = state.players[0].totalCoins;
     }
 
+    state.players.forEach(function (p) {
+      saveToLeaderboard(p.name, p.totalCoins, p.jumps, p.successes);
+    });
+    renderLeaderboard($('#lb-gameover'));
+
     $('#btn-restart').onclick = function () {
       showScreen('intro');
-      setTimeout(function () { $('#p1-name').focus(); }, 400);
+      setTimeout(initIntro, 350);
     };
   }
 

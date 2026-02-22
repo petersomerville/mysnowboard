@@ -708,6 +708,184 @@ h2 {
   color: var(--text-dim);
 }
 
+/* ========== GEAR SHOP ========== */
+
+.shop-note {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  margin-bottom: 10px;
+}
+
+.shop-card.owned {
+  border-color: var(--success);
+  opacity: 0.85;
+}
+
+.gear-equipped {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(46, 204, 113, 0.2);
+  color: var(--success);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-gear {
+  background: var(--bg-light);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  padding: 6px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.btn-gear:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn-gear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.equipped-gear {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.gear-badge {
+  font-size: 1.3rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.stat-boosted {
+  color: var(--success) !important;
+  font-weight: 700;
+}
+
+/* ========== STOP FOR THE DAY ========== */
+
+.btn-stop {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--card-border);
+  padding: 10px 24px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.btn-stop:hover {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: var(--danger);
+  color: var(--text);
+}
+
+/* ========== MODAL ========== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  background: linear-gradient(160deg, var(--bg-mid), var(--bg-dark));
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 32px 28px;
+  max-width: 380px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-box h3 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.modal-box p {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-actions .btn {
+  min-width: 120px;
+}
+
+/* ========== LEADERBOARD ========== */
+
+.leaderboard-box {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+
+.leaderboard-box h3 {
+  text-align: center;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.lb-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.lb-table td {
+  padding: 6px 8px;
+}
+
+.lb-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.lb-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  padding: 8px 0;
+}
+
 /* ========== RESPONSIVE ========== */
 
 @media (max-width: 600px) {

@@ -53,6 +53,11 @@
 
           <button id="btn-start" class="btn btn-primary" disabled>Hit the Slopes!</button>
         </div>
+
+        <div class="leaderboard-box">
+          <h3>🏆 Leaderboard</h3>
+          <div id="lb-intro"></div>
+        </div>
       </div>
     </div>
 
@@ -69,6 +74,7 @@
         </div>
 
         <p id="turn-indicator" class="turn-indicator hidden"></p>
+        <div id="equipped-gear" class="equipped-gear hidden"></div>
         <h2>⛰️ Top of the Hill</h2>
         <p class="screen-desc">Choose your trick, then send it!</p>
 
@@ -114,12 +120,19 @@
           <div id="shop-items" class="shop-items"></div>
         </div>
 
+        <div class="shop">
+          <h3>🎿 Gear Shop</h3>
+          <p class="shop-note">Permanent upgrades for your run</p>
+          <div id="gear-items" class="shop-items"></div>
+        </div>
+
         <div class="stats-box">
           <h3>📊 Your Stats</h3>
           <p>Jumps: <strong id="stat-jumps">0</strong> &nbsp;|&nbsp; Landed: <strong id="stat-successes">0</strong></p>
         </div>
 
         <button id="btn-to-hill" class="btn btn-primary">Back to the Hill! ⛰️</button>
+        <button id="btn-stop-day" class="btn btn-stop">Stop for the Day 🛑</button>
       </div>
     </div>
 
@@ -136,10 +149,26 @@
         </div>
         <div id="versus-stats" class="versus-stats hidden"></div>
 
+        <div class="leaderboard-box">
+          <h3>🏆 Leaderboard</h3>
+          <div id="lb-gameover"></div>
+        </div>
+
         <button id="btn-restart" class="btn btn-primary">Try Again! 🏂</button>
       </div>
     </div>
 
+  </div>
+
+  <div id="modal-confirm" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 id="modal-title">Are you sure?</h3>
+      <p id="modal-message">Your scores will be saved to the leaderboard.</p>
+      <div class="modal-actions">
+        <button id="modal-yes" class="btn btn-primary">Yes, I'm done</button>
+        <button id="modal-no" class="btn btn-stop">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <script src="game.js"></script>
