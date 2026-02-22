@@ -1,6 +1,6 @@
 # My Snowboard 🏂
 
-A browser-based snowboarding game where you name your rider, pick tricks, and try to survive the mountain.
+A browser-based snowboarding game where you name your rider, choose outfits, pick tricks, and try to survive the mountain.
 
 ## How to Play
 
