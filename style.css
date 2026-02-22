@@ -482,6 +482,192 @@ h2 {
   max-width: 100%;
 }
 
+/* ========== JUMP ACTION CONTROLS ========== */
+
+.jump-action {
+  text-align: center;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.jump-action.hidden {
+  display: none;
+}
+
+.action-instruction {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #d4e6f1;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.action-btn-wrap {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.power-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.power-ring.hidden {
+  display: none;
+}
+
+.ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 8;
+}
+
+.ring-sweet-zone {
+  fill: none;
+  stroke: rgba(46, 204, 113, 0.25);
+  stroke-width: 8;
+}
+
+.ring-fill {
+  fill: none;
+  stroke: #f39c12;
+  stroke-width: 8;
+  stroke-dasharray: 364.42;
+  stroke-dashoffset: 364.42;
+  stroke-linecap: round;
+  transition: stroke 0.15s;
+}
+
+.action-btn {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  background: rgba(52, 152, 219, 0.35);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 2;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-btn:active {
+  background: rgba(52, 152, 219, 0.6);
+  transform: scale(0.94);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.action-btn-land {
+  background: rgba(46, 204, 113, 0.35);
+  border-color: rgba(46, 204, 113, 0.6);
+  animation: land-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes land-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+}
+
+/* ========== LANDING TIMING BAR ========== */
+
+.timing-bar-wrap {
+  width: 100%;
+  max-width: 300px;
+  margin: 10px auto 0;
+}
+
+.timing-bar-wrap.hidden {
+  display: none;
+}
+
+.timing-bar {
+  position: relative;
+  display: flex;
+  height: 28px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.timing-zone {
+  flex: 1;
+}
+
+.tz-red {
+  background: rgba(231, 76, 60, 0.6);
+}
+
+.tz-yellow {
+  background: rgba(243, 156, 18, 0.5);
+}
+
+.tz-green {
+  background: rgba(46, 204, 113, 0.65);
+  box-shadow: inset 0 0 12px rgba(46, 204, 113, 0.4);
+}
+
+.timing-needle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 0%;
+  width: 4px;
+  margin-left: -2px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 16px rgba(255, 255, 255, 0.4);
+  z-index: 2;
+  transition: none;
+}
+
+.timing-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 4px 0;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tl-center {
+  color: rgba(46, 204, 113, 0.8);
+  font-weight: 700;
+}
+
+.power-label {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  min-height: 1.3em;
+  transition: color 0.15s;
+}
+
+.score-breakdown {
+  font-size: 0.82rem;
+  color: #8aa4b8;
+  margin: 4px 0 8px;
+  letter-spacing: 0.3px;
+}
+
 .jump-result {
   text-align: center;
   padding: 18px;

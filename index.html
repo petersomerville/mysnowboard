@@ -97,9 +97,38 @@
         <div class="canvas-wrapper">
           <canvas id="jump-canvas"></canvas>
         </div>
+        <div id="jump-action" class="jump-action hidden">
+          <p id="action-instruction" class="action-instruction"></p>
+          <div class="action-btn-wrap">
+            <svg class="power-ring" viewBox="0 0 140 140" id="power-ring-svg">
+              <circle class="ring-track" cx="70" cy="70" r="58" />
+              <circle class="ring-sweet-zone" cx="70" cy="70" r="58" id="ring-sweet-zone" />
+              <circle class="ring-fill" cx="70" cy="70" r="58" id="ring-fill" />
+            </svg>
+            <button id="action-btn" class="action-btn">HOLD</button>
+          </div>
+          <div id="timing-bar-wrap" class="timing-bar-wrap hidden">
+            <div class="timing-bar">
+              <div class="timing-zone tz-red"></div>
+              <div class="timing-zone tz-yellow"></div>
+              <div class="timing-zone tz-green"></div>
+              <div class="timing-zone tz-yellow"></div>
+              <div class="timing-zone tz-red"></div>
+              <div id="timing-needle" class="timing-needle"></div>
+            </div>
+            <div class="timing-labels">
+              <span>Miss</span>
+              <span class="tl-center">PERFECT</span>
+              <span>Miss</span>
+            </div>
+          </div>
+          <p id="power-label" class="power-label"></p>
+        </div>
+
         <div id="jump-result" class="jump-result hidden">
           <h3 id="result-text"></h3>
           <p id="result-detail"></p>
+          <p id="score-breakdown" class="score-breakdown"></p>
           <button id="btn-to-chalet" class="btn btn-primary">Head to the Chalet 🏔️</button>
         </div>
       </div>

@@ -62,9 +62,48 @@
 
   let animCanvas, animCtx, animStart, animSuccess, animJumpIdx, animWeather;
 
+  var CHARGE_MAX_MS = 2500;
+  var LAND_WINDOW_MS = 1200;
+  var jumpPhase = 'idle';
+  var chargeStartTime = 0;
+  var chargeValue = 0;
+  var chargeScoreVal = 0;
+  var landWindowStartTime = 0;
+  var landingScoreVal = 0;
+  var jumpSetup = null;
+  var chargeFrame = null;
+  var landRingFrame = null;
+  var animPeakMod = 1;
+  var animPhase = 'pre-land';
+  var animResumeTs = 0;
+  var animPauseT = 0.62;
+  var animTotalMs = 4500;
+  var actionInputBlocked = false;
+
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
   const lerp = (a, b, t) => a + (b - a) * t;
+
+  function calcChargeScore(v) {
+    if (v <= 0.30) return v / 0.30 * 0.30;
+    if (v <= 0.70) return 0.30 + (v - 0.30) / 0.40 * 0.40;
+    if (v <= 0.90) return 0.70 + (v - 0.70) / 0.20 * 0.30;
+    return 1.0 - (v - 0.90) / 0.10 * 0.50;
+  }
+
+  function chargeZoneColor(v) {
+    if (v <= 0.30) return '#e74c3c';
+    if (v <= 0.70) return '#f39c12';
+    if (v <= 0.90) return '#2ecc71';
+    return '#e74c3c';
+  }
+
+  function chargeZoneLabel(v) {
+    if (v <= 0.30) return 'Weak';
+    if (v <= 0.70) return 'Good';
+    if (v <= 0.90) return 'Perfect!';
+    return 'Too much!';
+  }
 
   function applyMods(jump, gear, hill, weather) {
     var rate = jump.successRate;
@@ -458,41 +497,19 @@
     var hill = HILLS[state.selectedHill];
     var weather = WEATHER[state.weather];
     var mods = applyMods(jump, state.player.gear, hill, weather);
-    const success = Math.random() < mods.successRate;
 
-    state.player.jumps++;
-    var coinsEarned = 0;
-    var streakCount = 0;
-
-    if (success) {
-      state.player.streak++;
-      streakCount = state.player.streak;
-      var streakMult = streakCount >= 3 ? 2 : streakCount >= 2 ? 1.5 : 1;
-      coinsEarned = Math.round(mods.reward * streakMult);
-      state.player.successes++;
-      state.player.coins += coinsEarned;
-      state.player.totalCoins += coinsEarned;
-    } else {
-      state.player.streak = 0;
-      state.player.health = Math.max(0, state.player.health - mods.damage);
-      if (state.player.health <= 0) state.player.alive = false;
-    }
-
-    state.lastResult = {
-      jump: jump, jumpIndex: state.selectedJump, success: success,
-      modReward: mods.reward, modDamage: mods.damage,
-      coinsEarned: coinsEarned, streakCount: streakCount,
-      hillName: hill.name, weatherName: weather.name, weatherIdx: state.weather
+    jumpSetup = {
+      jump: jump, jumpIndex: state.selectedJump,
+      mods: mods, hill: hill, weather: weather, weatherIdx: state.weather
     };
 
-    sfxLaunch();
     showScreen('jump');
-    setTimeout(beginJumpAnim, 400);
+    setTimeout(beginJumpSequence, 400);
   }
 
-  // ==================== JUMP ANIMATION ====================
+  // ==================== JUMP INTERACTION ====================
 
-  function beginJumpAnim() {
+  function beginJumpSequence() {
     animCanvas = $('#jump-canvas');
     animCtx = animCanvas.getContext('2d');
 
@@ -504,23 +521,226 @@
     animCanvas.style.width = w + 'px';
     animCanvas.style.height = h + 'px';
 
-    animSuccess = state.lastResult.success;
-    animJumpIdx = state.lastResult.jumpIndex;
-    animWeather = WEATHER[state.lastResult.weatherIdx];
-    animStart = null;
+    animJumpIdx = jumpSetup.jumpIndex;
+    animWeather = WEATHER[jumpSetup.weatherIdx];
+    animSuccess = false;
+    animPeakMod = 1;
+    chargeValue = 0;
+    chargeScoreVal = 0;
+    landingScoreVal = 0;
+    animPhase = 'pre-land';
+    actionInputBlocked = false;
 
-    $('#jump-title').textContent = 'Attempting: ' + state.lastResult.jump.name + ' ' + state.lastResult.jump.emoji + '  |  ' + animWeather.emoji + ' ' + animWeather.name;
+    $('#jump-title').textContent = jumpSetup.jump.name + ' ' + jumpSetup.jump.emoji + '  |  ' + animWeather.emoji + ' ' + animWeather.name;
     $('#jump-result').classList.add('hidden');
 
+    drawScene(animCtx, 0);
+
+    var actionEl = $('#jump-action');
+    actionEl.classList.remove('hidden');
+    var isMobile = 'ontouchstart' in window;
+    $('#action-instruction').textContent = isMobile ? 'Hold to charge your jump!' : 'Hold button or SPACE to charge!';
+    $('#action-btn').textContent = 'HOLD';
+    $('#action-btn').className = 'action-btn';
+    $('#power-label').textContent = '';
+    $('#timing-bar-wrap').classList.add('hidden');
+    updatePowerRing(0);
+    $('#power-ring-svg').classList.remove('hidden');
+
+    jumpPhase = 'charge-ready';
+  }
+
+  function onActionStart(e) {
+    if (e && e.cancelable) e.preventDefault();
+    if (actionInputBlocked) return;
+
+    if (jumpPhase === 'charge-ready') {
+      jumpPhase = 'charging';
+      chargeStartTime = performance.now();
+      chargeFrame = requestAnimationFrame(updateCharge);
+    } else if (jumpPhase === 'land-ready') {
+      var elapsed = performance.now() - landWindowStartTime;
+      var t = Math.min(elapsed / LAND_WINDOW_MS, 1);
+      landingScoreVal = 1 - Math.abs(t - 0.5) * 2;
+      landingScoreVal = Math.max(0, Math.min(1, landingScoreVal));
+
+      jumpPhase = 'resolved';
+      cancelAnimationFrame(landRingFrame);
+      resolveJump();
+
+      actionInputBlocked = true;
+      $('#jump-action').classList.add('hidden');
+    }
+  }
+
+  function onActionEnd(e) {
+    if (e && e.cancelable) e.preventDefault();
+    if (jumpPhase !== 'charging') return;
+
+    var elapsed = performance.now() - chargeStartTime;
+    chargeValue = Math.min(elapsed / CHARGE_MAX_MS, 1);
+    chargeScoreVal = calcChargeScore(chargeValue);
+    animPeakMod = chargeScoreVal;
+    jumpPhase = 'launching';
+    cancelAnimationFrame(chargeFrame);
+
+    $('#power-ring-svg').classList.add('hidden');
+    $('#action-instruction').textContent = '';
+    $('#power-label').textContent = '';
+    $('#jump-action').classList.add('hidden');
+
+    sfxLaunch();
+    animStart = null;
+    animPhase = 'pre-land';
     requestAnimationFrame(tick);
   }
 
+  function updateCharge() {
+    if (jumpPhase !== 'charging') return;
+    var elapsed = performance.now() - chargeStartTime;
+    chargeValue = Math.min(elapsed / CHARGE_MAX_MS, 1);
+
+    updatePowerRing(chargeValue);
+
+    $('#power-label').textContent = chargeZoneLabel(chargeValue);
+    $('#power-label').style.color = chargeZoneColor(chargeValue);
+
+    var btnText = chargeValue < 0.30 ? 'HOLD...' : chargeValue < 0.70 ? 'ALMOST...' : chargeValue < 0.90 ? 'NOW!' : 'TOO MUCH!';
+    $('#action-btn').textContent = btnText;
+
+    drawScene(animCtx, chargeValue * 0.22);
+
+    if (chargeValue >= 1) {
+      onActionEnd(null);
+      return;
+    }
+
+    chargeFrame = requestAnimationFrame(updateCharge);
+  }
+
+  function updatePowerRing(value) {
+    var ring = $('#ring-fill');
+    var circumference = 2 * Math.PI * 58;
+    ring.style.strokeDashoffset = String(circumference * (1 - value));
+    ring.style.stroke = chargeZoneColor(value);
+
+    var sweet = $('#ring-sweet-zone');
+    sweet.style.strokeDasharray = circumference * 0.20 + ' ' + circumference * 0.80;
+    sweet.style.strokeDashoffset = String(-circumference * 0.70);
+  }
+
+  function showLandingUI() {
+    var actionEl = $('#jump-action');
+    actionEl.classList.remove('hidden');
+    var isMobile = 'ontouchstart' in window;
+    $('#action-instruction').textContent = isMobile ? 'TAP when the needle hits green!' : 'TAP or SPACE when the needle hits green!';
+    $('#action-btn').textContent = 'TAP!';
+    $('#action-btn').className = 'action-btn action-btn-land';
+    $('#power-ring-svg').classList.add('hidden');
+    $('#power-label').textContent = '';
+
+    $('#timing-bar-wrap').classList.remove('hidden');
+    $('#timing-needle').style.left = '0%';
+
+    landWindowStartTime = performance.now();
+    updateTimingBar();
+  }
+
+  function updateTimingBar() {
+    if (jumpPhase !== 'land-ready') return;
+    var elapsed = performance.now() - landWindowStartTime;
+    var t = Math.min(elapsed / LAND_WINDOW_MS, 1);
+
+    $('#timing-needle').style.left = (t * 100) + '%';
+
+    if (t >= 1) {
+      landingScoreVal = 0;
+      jumpPhase = 'resolved';
+      resolveJump();
+      actionInputBlocked = true;
+      $('#jump-action').classList.add('hidden');
+      return;
+    }
+
+    landRingFrame = requestAnimationFrame(updateTimingBar);
+  }
+
+  function resolveJump() {
+    var overallScore = chargeScoreVal * 0.4 + landingScoreVal * 0.6;
+    var threshold = 1 - jumpSetup.mods.successRate;
+    var success = overallScore >= threshold;
+
+    animSuccess = success;
+    state.player.jumps++;
+
+    var coinsEarned = 0;
+    var streakCount = 0;
+
+    if (success) {
+      state.player.streak++;
+      streakCount = state.player.streak;
+      var streakMult = streakCount >= 3 ? 2 : streakCount >= 2 ? 1.5 : 1;
+      coinsEarned = Math.round(jumpSetup.mods.reward * streakMult);
+      state.player.successes++;
+      state.player.coins += coinsEarned;
+      state.player.totalCoins += coinsEarned;
+    } else {
+      state.player.streak = 0;
+      state.player.health = Math.max(0, state.player.health - jumpSetup.mods.damage);
+      if (state.player.health <= 0) state.player.alive = false;
+    }
+
+    state.lastResult = {
+      jump: jumpSetup.jump, jumpIndex: jumpSetup.jumpIndex, success: success,
+      modReward: jumpSetup.mods.reward, modDamage: jumpSetup.mods.damage,
+      coinsEarned: coinsEarned, streakCount: streakCount,
+      hillName: jumpSetup.hill.name, weatherName: jumpSetup.weather.name,
+      weatherIdx: jumpSetup.weatherIdx,
+      chargeScore: chargeScoreVal, landingScore: landingScoreVal
+    };
+  }
+
+  // ==================== JUMP ANIMATION ====================
+
   function tick(ts) {
     if (!animStart) animStart = ts;
-    const t = Math.min((ts - animStart) / 3200, 1);
-    drawScene(animCtx, t);
-    if (t < 1) requestAnimationFrame(tick);
-    else showJumpResult();
+
+    if (animPhase === 'pre-land') {
+      var t = Math.min((ts - animStart) / animTotalMs, 1);
+
+      if (t >= animPauseT) {
+        animPhase = 'paused';
+        jumpPhase = 'land-ready';
+        showLandingUI();
+        drawScene(animCtx, animPauseT);
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      drawScene(animCtx, t);
+      requestAnimationFrame(tick);
+
+    } else if (animPhase === 'paused') {
+      var landElapsed = performance.now() - landWindowStartTime;
+      var wobble = Math.sin(landElapsed * 0.004) * 0.004;
+      drawScene(animCtx, animPauseT + wobble);
+
+      if (jumpPhase === 'resolved') {
+        animPhase = 'post-land';
+        animResumeTs = ts;
+      }
+      requestAnimationFrame(tick);
+
+    } else if (animPhase === 'post-land') {
+      var remainDuration = animTotalMs * (1 - animPauseT);
+      var postT = (ts - animResumeTs) / remainDuration;
+      var t = animPauseT + postT * (1 - animPauseT);
+      t = Math.min(t, 1);
+
+      drawScene(animCtx, t);
+      if (t < 1) requestAnimationFrame(tick);
+      else showJumpResult();
+    }
   }
 
   function slopeY(x, W, H) {
@@ -730,7 +950,7 @@
     const ksY = slopeY(ksX, W, H);
     const klY = ksY - H * 0.08;
     const lx = W * 0.72, ly = slopeY(lx, W, H);
-    const peakY = H * 0.06;
+    const peakY = lerp(H * 0.24, H * 0.04, animPeakMod);
     const off = -14;
 
     if (t < 0.22) {
@@ -852,6 +1072,10 @@
       $('#result-detail').textContent = '-' + r.modDamage + ' health. That\'s gonna leave a mark!' + weatherNote;
       sfxWipeout();
     }
+
+    var chargeLabel = r.chargeScore >= 0.7 ? 'Perfect' : r.chargeScore >= 0.3 ? 'Good' : 'Weak';
+    var landLabel = r.landingScore >= 0.7 ? 'Perfect' : r.landingScore >= 0.3 ? 'Good' : 'Missed';
+    $('#score-breakdown').textContent = 'Charge: ' + chargeLabel + ' (' + Math.round(r.chargeScore * 100) + '%)  •  Landing: ' + landLabel + ' (' + Math.round(r.landingScore * 100) + '%)';
 
     const btn = $('#btn-to-chalet');
     if (state.player.health <= 0) {
@@ -1075,6 +1299,41 @@
       soundEnabled = !soundEnabled;
       this.textContent = soundEnabled ? '🔊' : '🔇';
     };
+
+    var actionBtn = $('#action-btn');
+    var touchActive = false;
+
+    actionBtn.addEventListener('touchstart', function (e) {
+      touchActive = true;
+      onActionStart(e);
+    }, { passive: false });
+    actionBtn.addEventListener('touchend', function (e) {
+      touchActive = false;
+      onActionEnd(e);
+    }, { passive: false });
+
+    actionBtn.addEventListener('mousedown', function (e) {
+      if (touchActive) return;
+      onActionStart(e);
+    });
+    actionBtn.addEventListener('mouseup', function (e) {
+      if (touchActive) return;
+      onActionEnd(e);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        onActionStart(null);
+      }
+    });
+    document.addEventListener('keyup', function (e) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        onActionEnd(null);
+      }
+    });
+
     initIntro();
   }
 
