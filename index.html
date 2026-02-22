@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Snowboard 🏂</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="snowflakes"></div>
+
+  <div id="game-container">
+
+    <!-- INTRO SCREEN -->
+    <div id="screen-intro" class="screen active">
+      <div class="screen-content">
+        <h1 class="game-title">🏔️ My Snowboard 🏂</h1>
+        <p class="subtitle">Hit the slopes and master the mountain!</p>
+
+        <div class="intro-form">
+          <div class="form-group">
+            <label for="player-name">Name Your Snowboarder</label>
+            <input type="text" id="player-name" placeholder="Enter name..." maxlength="20" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label>Choose Your Style</label>
+            <div id="color-options" class="color-options"></div>
+          </div>
+
+          <div class="boarder-preview">
+            <span id="preview-boarder" class="preview-figure">🏂</span>
+          </div>
+
+          <button id="btn-start" class="btn btn-primary" disabled>Hit the Slopes!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HILL SCREEN -->
+    <div id="screen-hill" class="screen">
+      <div class="screen-content">
+        <div class="hud">
+          <div class="hud-item hud-name"><span class="hud-name-val"></span></div>
+          <div class="hud-item">❤️
+            <div class="health-bar"><div class="health-fill"></div></div>
+            <span class="health-text">100</span>
+          </div>
+          <div class="hud-item">🪙 <span class="coins-text">0</span></div>
+        </div>
+
+        <h2>⛰️ Top of the Hill</h2>
+        <p class="screen-desc">Choose your trick, then send it!</p>
+
+        <div id="jump-options" class="jump-options"></div>
+
+        <button id="btn-jump" class="btn btn-primary" disabled>Send It! 🚀</button>
+      </div>
+    </div>
+
+    <!-- JUMP SCREEN -->
+    <div id="screen-jump" class="screen">
+      <div class="screen-content jump-screen-content">
+        <h2 id="jump-title"></h2>
+        <div class="canvas-wrapper">
+          <canvas id="jump-canvas"></canvas>
+        </div>
+        <div id="jump-result" class="jump-result hidden">
+          <h3 id="result-text"></h3>
+          <p id="result-detail"></p>
+          <button id="btn-to-chalet" class="btn btn-primary">Head to the Chalet 🏔️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHALET SCREEN -->
+    <div id="screen-chalet" class="screen">
+      <div class="screen-content">
+        <div class="hud">
+          <div class="hud-item hud-name"><span class="hud-name-val"></span></div>
+          <div class="hud-item">❤️
+            <div class="health-bar"><div class="health-fill"></div></div>
+            <span class="health-text">100</span>
+          </div>
+          <div class="hud-item">🪙 <span class="coins-text">0</span></div>
+        </div>
+
+        <h2>🏠 The Chalet</h2>
+        <p id="chalet-message" class="chalet-message"></p>
+
+        <div class="shop">
+          <h3>🍽️ Refuel &amp; Recover</h3>
+          <div id="shop-items" class="shop-items"></div>
+        </div>
+
+        <div class="stats-box">
+          <h3>📊 Your Stats</h3>
+          <p>Jumps: <strong id="stat-jumps">0</strong> &nbsp;|&nbsp; Landed: <strong id="stat-successes">0</strong></p>
+        </div>
+
+        <button id="btn-to-hill" class="btn btn-primary">Back to the Hill! ⛰️</button>
+      </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="screen-gameover" class="screen">
+      <div class="screen-content gameover-content">
+        <h1 class="gameover-title">💥 Wipeout!</h1>
+        <p class="gameover-sub"><span id="final-name"></span> is too injured to continue.</p>
+
+        <div class="final-stats">
+          <div class="stat-row"><span>Total Jumps</span><strong id="final-jumps">0</strong></div>
+          <div class="stat-row"><span>Tricks Landed</span><strong id="final-successes">0</strong></div>
+          <div class="stat-row"><span>Coins Earned</span><strong id="final-coins">0</strong></div>
+        </div>
+
+        <button id="btn-restart" class="btn btn-primary">Try Again! 🏂</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
