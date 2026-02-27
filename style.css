@@ -314,8 +314,9 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 14px;
+  padding: 18px 20px;
+  font-size: 1.1rem;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 14px;
@@ -335,10 +336,10 @@ h2 {
 }
 
 .health-bar {
-  width: 80px;
-  height: 12px;
+  width: 90px;
+  height: 16px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -487,10 +488,10 @@ h2 {
 .jump-action {
   text-align: center;
   padding: 14px 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-rows: auto 50px auto auto;
+  justify-items: center;
+  gap: 6px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
@@ -532,19 +533,19 @@ h2 {
 .ring-track {
   fill: none;
   stroke: rgba(255, 255, 255, 0.12);
-  stroke-width: 8;
+  stroke-width: 14;
 }
 
 .ring-sweet-zone {
   fill: none;
-  stroke: rgba(46, 204, 113, 0.25);
-  stroke-width: 8;
+  stroke: rgba(46, 204, 113, 0.3);
+  stroke-width: 14;
 }
 
 .ring-fill {
   fill: none;
   stroke: #f39c12;
-  stroke-width: 8;
+  stroke-width: 14;
   stroke-dasharray: 364.42;
   stroke-dashoffset: 364.42;
   stroke-linecap: round;
@@ -593,7 +594,7 @@ h2 {
 }
 
 .timing-bar-wrap.hidden {
-  display: none;
+  visibility: hidden;
 }
 
 .timing-bar {
@@ -666,6 +667,79 @@ h2 {
   color: #8aa4b8;
   margin: 4px 0 8px;
   letter-spacing: 0.3px;
+}
+
+.result-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* ========== TUTORIAL OVERLAY ========== */
+
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.tutorial-overlay.hidden {
+  display: none;
+}
+
+.tutorial-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  max-width: 340px;
+  text-align: center;
+}
+
+.tutorial-box h3 {
+  margin: 0 0 16px;
+  font-size: 1.3rem;
+}
+
+.tutorial-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.tutorial-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.tutorial-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(52, 152, 219, 0.3);
+  border: 2px solid rgba(52, 152, 219, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.tutorial-step p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .jump-result {
@@ -1219,8 +1293,8 @@ h2 {
   .jump-card { max-width: 100%; }
   .shop-items { flex-direction: column; align-items: center; }
   .shop-card { max-width: 100%; }
-  .hud { font-size: 0.82rem; padding: 10px 12px; }
-  .health-bar { width: 55px; }
+  .hud { font-size: 0.92rem; padding: 14px 14px; }
+  .health-bar { width: 65px; height: 14px; }
   .gameover-title { font-size: 2.2rem; }
   .hill-options { gap: 6px; }
   .hill-card { padding: 6px 12px; font-size: 0.82rem; }

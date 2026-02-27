@@ -477,8 +477,7 @@
           '<span class="stat' + (mods.reward !== base.reward ? ' stat-boosted' : '') + '">🪙 ' + mods.reward + '</span>' +
           '<span class="stat' + (mods.damage !== base.damage ? ' stat-boosted' : '') + '">💔 -' + mods.damage + '</span>' +
         '</div>' +
-        '<p class="jump-desc">' + j.desc + '</p>' +
-        '<div class="difficulty">' + '⭐'.repeat(j.difficulty) + '☆'.repeat(3 - j.difficulty) + '</div>';
+        '<p class="jump-desc">' + j.desc + '</p>';
       card.addEventListener('click', function () { selectJump(i); sfxClick(); });
       box.appendChild(card);
     });
@@ -548,7 +547,23 @@
     updatePowerRing(0);
     $('#power-ring-svg').classList.remove('hidden');
 
-    jumpPhase = 'charge-ready';
+    if (!localStorage.getItem('msb_tutorial_seen')) {
+      showJumpTutorial(function () { jumpPhase = 'charge-ready'; });
+    } else {
+      jumpPhase = 'charge-ready';
+    }
+  }
+
+  function showJumpTutorial(onDone) {
+    var overlay = $('#jump-tutorial');
+    overlay.classList.remove('hidden');
+    var dismiss = function () {
+      overlay.classList.add('hidden');
+      localStorage.setItem('msb_tutorial_seen', '1');
+      onDone();
+    };
+    $('#tutorial-ok').onclick = dismiss;
+    overlay.onclick = function (e) { if (e.target === overlay) dismiss(); };
   }
 
   function onActionStart(e) {
@@ -626,7 +641,9 @@
     ring.style.stroke = chargeZoneColor(value);
 
     var sweet = $('#ring-sweet-zone');
-    sweet.style.strokeDasharray = circumference * 0.20 + ' ' + circumference * 0.80;
+    var sweetLen = circumference * 0.20;
+    var sweetGap = circumference - sweetLen;
+    sweet.style.strokeDasharray = sweetLen + ' ' + sweetGap;
     sweet.style.strokeDashoffset = String(-circumference * 0.70);
   }
 
@@ -1078,29 +1095,52 @@
     var landLabel = r.landingScore >= 0.7 ? 'Perfect' : r.landingScore >= 0.3 ? 'Good' : 'Missed';
     $('#score-breakdown').textContent = 'Charge: ' + chargeLabel + ' (' + Math.round(r.chargeScore * 100) + '%)  •  Landing: ' + landLabel + ' (' + Math.round(r.landingScore * 100) + '%)';
 
-    const btn = $('#btn-to-chalet');
+    var chaletBtn = $('#btn-to-chalet');
+    var resultHillBtn = $('#btn-result-hill');
+
     if (state.player.health <= 0) {
+      resultHillBtn.classList.add('hidden');
       if (state.mode === 'versus') {
         var otherIdx = 1 - state.currentPlayer;
         var other = state.players[otherIdx];
         if (other.alive) {
-          btn.textContent = state.player.name + ' is eliminated! ' + other.name + ' continues...';
-          btn.onclick = function () {
+          chaletBtn.textContent = state.player.name + ' is eliminated! ' + other.name + ' continues...';
+          chaletBtn.onclick = function () {
             state.currentPlayer = otherIdx;
             showScreen('hill');
             setTimeout(initHill, 350);
           };
         } else {
-          btn.textContent = 'Game Over...';
-          btn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
+          chaletBtn.textContent = 'Game Over...';
+          chaletBtn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
         }
       } else {
-        btn.textContent = 'Game Over...';
-        btn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
+        chaletBtn.textContent = 'Game Over...';
+        chaletBtn.onclick = function () { showScreen('gameover'); setTimeout(initGameOver, 350); };
       }
     } else {
-      btn.textContent = 'Head to the Chalet 🏔️';
-      btn.onclick = function () { showScreen('chalet'); setTimeout(initChalet, 350); };
+      chaletBtn.textContent = 'Head to the Chalet 🏔️';
+      chaletBtn.onclick = function () { showScreen('chalet'); setTimeout(initChalet, 350); };
+
+      resultHillBtn.classList.remove('hidden');
+      if (state.mode === 'versus') {
+        var otherIdx = 1 - state.currentPlayer;
+        var other = state.players[otherIdx];
+        if (other.alive) {
+          resultHillBtn.textContent = other.name + "'s Turn! 🔄";
+          resultHillBtn.onclick = function () {
+            state.currentPlayer = otherIdx;
+            showScreen('hill');
+            setTimeout(initHill, 350);
+          };
+        } else {
+          resultHillBtn.textContent = 'Back to the Hill ⛰️';
+          resultHillBtn.onclick = function () { showScreen('hill'); setTimeout(initHill, 350); };
+        }
+      } else {
+        resultHillBtn.textContent = 'Back to the Hill ⛰️';
+        resultHillBtn.onclick = function () { showScreen('hill'); setTimeout(initHill, 350); };
+      }
     }
   }
 
