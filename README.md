@@ -1,6 +1,6 @@
 # My Snowboard 🏂
 
-A browser-based snowboarding game where you name your rider, choose outfits, pick tricks, and try to survive the mountain.
+A browser-based snowboarding game where you name your rider, pick tricks, and try to survive the mountain.
 
 **[Play it live](https://my-snowboard.vercel.app/)**
 
@@ -28,7 +28,7 @@ Game over when your health hits zero. Go for the highest coin total!
 
 ## How This Was Built
 
-The primary developer on this project is a 9-year-old boy who is learning both snowboarding and software development at the same time. He designed the game mechanics, directed the features, tested on his phone, and provided the user research feedback that shaped every iteration. The game was built with the help of AI coding tools in Cursor.
+The primary developer on this project is a 9-year-old boy who is learning both snowboarding and software development at the same time. He designed the game mechanics, directed the features, tested on his phone, and provided the user research feedback that shaped every iteration. The game was built with the help of Claude Opus 4.6 and Cursor, and the advice of his uncle.
 
 ### Tech Stack
 
